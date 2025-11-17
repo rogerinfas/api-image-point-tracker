@@ -1,66 +1,61 @@
 import { Injectable } from '@nestjs/common';
-import { TDocumentDefinitions } from 'pdfmake/interfaces';
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { PdfContext } from './contexts/pdf.context';
+import { SimplePdfStrategy } from './strategies/simple-pdf.strategy';
+import { IPdfOptions } from './interfaces/pdf-strategy.interface';
+
+type PdfType = 'simple' | 'custom';
 
 @Injectable()
 export class PdfService {
-  constructor() {
-    // Configurar las fuentes para pdfmake
-    (pdfMake as any).vfs = pdfFonts.vfs;
-  }
-  async generateSimplePdf(): Promise<Buffer> {
-    // Definir el documento
-    const docDefinition: TDocumentDefinitions = {
-      content: [
-        { text: 'Reporte PDF', style: 'header' },
-        'Este es un ejemplo de generación de PDF con pdfmake.',
-        {
-          text: 'Características:',
-          style: 'subheader',
-          margin: [0, 15, 0, 5]
-        },
-        {
-          ul: [
-            'Fácil de usar',
-            'Personalizable',
-            'Soporte para estilos',
-            'Tablas y listas'
-          ]
-        },
-        {
-          text: 'Fecha de generación: ' + new Date().toLocaleString(),
-          margin: [0, 15, 0, 0],
-          fontSize: 10,
-          alignment: 'right'
-        }
-      ],
-      styles: {
-        header: {
-          fontSize: 18,
-          bold: true,
-          margin: [0, 0, 0, 10],
-          alignment: 'center'
-        },
-        subheader: {
-          fontSize: 14,
-          bold: true,
-          margin: [0, 10, 0, 5]
-        }
-      },
-      defaultStyle: {
-        fontSize: 12
-      }
-    };
+  private context: PdfContext;
 
-    // Crear el PDF
-    const pdfDoc = pdfMake.createPdf(docDefinition);
-    
-    // Convertir a buffer
-    return new Promise((resolve, reject) => {
-      pdfDoc.getBuffer((buffer: Buffer) => {
-        resolve(buffer);
-      });
+  constructor() {
+    // Configuración por defecto
+    const defaultStrategy = new SimplePdfStrategy({
+      title: 'Reporte PDF',
+      orientation: 'landscape',
+    });
+    this.context = new PdfContext(defaultStrategy);
+  }
+
+  /**
+   * Genera un PDF con la estrategia especificada
+   * @param type Tipo de PDF a generar
+   * @param options Opciones de configuración del PDF
+   * @param content Contenido personalizado (opcional)
+   * @returns Buffer del PDF generado y nombre del archivo
+   */
+  async generatePdf(
+    type: PdfType = 'simple',
+    options?: IPdfOptions,
+    content?: any[],
+  ): Promise<{ buffer: Buffer; fileName: string }> {
+    try {
+      switch (type) {
+        case 'simple':
+          this.context.setStrategy(new SimplePdfStrategy(options || {}, content));
+          break;
+        case 'custom':
+          // Aquí puedes agregar más estrategias personalizadas
+          throw new Error('Estrategia personalizada no implementada');
+        default:
+          throw new Error(`Tipo de PDF no soportado: ${type}`);
+      }
+
+      return await this.context.generatePdf();
+    } catch (error) {
+      console.error('Error al generar el PDF:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Método de conveniencia para generar un PDF simple
+   */
+  async generateSimplePdf(): Promise<{ buffer: Buffer; fileName: string }> {
+    return this.generatePdf('simple', {
+      title: 'Reporte Simple',
+      orientation: 'landscape',
     });
   }
 }

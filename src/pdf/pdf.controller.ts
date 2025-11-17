@@ -1,4 +1,4 @@
-import { Controller, Get, Res, Header } from '@nestjs/common';
+import { Controller, Get, Res, Query, Header } from '@nestjs/common';
 import type { Response } from 'express';
 import { PdfService } from './pdf.service';
 
@@ -8,16 +8,39 @@ export class PdfController {
 
   @Get('generate')
   @Header('Content-Type', 'application/pdf')
-  @Header('Content-Disposition', 'attachment; filename=reporte.pdf')
-  async generatePdf(@Res() res: Response) {
+  async generatePdf(
+    @Res() res: Response,
+    @Query('type') type?: string,
+  ) {
     try {
-      const pdfBuffer = await this.pdfService.generateSimplePdf();
-      res.send(pdfBuffer);
+      const { buffer, fileName } = await this.pdfService.generatePdf(
+        type as any || 'simple'
+      );
+      
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(buffer);
     } catch (error) {
       console.error('Error al generar el PDF:', error);
       res.status(500).json({
         statusCode: 500,
         message: 'Error al generar el PDF',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('simple')
+  @Header('Content-Type', 'application/pdf')
+  async generateSimplePdf(@Res() res: Response) {
+    try {
+      const { buffer, fileName } = await this.pdfService.generateSimplePdf();
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error al generar el PDF simple:', error);
+      res.status(500).json({
+        statusCode: 500,
+        message: 'Error al generar el PDF simple',
         error: error.message,
       });
     }
