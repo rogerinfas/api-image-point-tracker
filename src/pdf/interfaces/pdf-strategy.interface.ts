@@ -11,4 +11,5 @@ export interface IPdfOptions {
   pageSize?: string;
   styles?: Record<string, any>;
   defaultStyle?: Record<string, any>;
+  orderData?: any;
 }

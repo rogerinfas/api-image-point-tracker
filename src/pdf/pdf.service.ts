@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PdfContext } from './contexts/pdf.context';
 import { SimplePdfStrategy } from './strategies/simple-pdf.strategy';
+import { ProductionOrderStrategy, ProductionOrderData } from './strategies/production-order.strategy';
 import { IPdfOptions } from './interfaces/pdf-strategy.interface';
 
-type PdfType = 'simple' | 'custom';
+type PdfType = 'simple' | 'production-order';
 
 @Injectable()
 export class PdfService {
@@ -35,9 +36,12 @@ export class PdfService {
         case 'simple':
           this.context.setStrategy(new SimplePdfStrategy(options || {}, content));
           break;
-        case 'custom':
-          // Aquí puedes agregar más estrategias personalizadas
-          throw new Error('Estrategia personalizada no implementada');
+        case 'production-order':
+          if (!options?.orderData) {
+            throw new Error('Se requieren datos de la orden de producción');
+          }
+          this.context.setStrategy(new ProductionOrderStrategy(options.orderData as ProductionOrderData, options));
+          break;
         default:
           throw new Error(`Tipo de PDF no soportado: ${type}`);
       }
@@ -47,6 +51,15 @@ export class PdfService {
       console.error('Error al generar el PDF:', error);
       throw error;
     }
+  }
+
+  /**
+   * Genera una orden de producción
+   * @param orderData Datos de la orden de producción
+   * @returns Buffer del PDF generado y nombre del archivo
+   */
+  async generateProductionOrder(orderData: ProductionOrderData): Promise<{ buffer: Buffer; fileName: string }> {
+    return this.generatePdf('production-order', { orderData });
   }
 
   /**
